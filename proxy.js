@@ -8,7 +8,7 @@ module.exports = function(){
       _apply  = Function.prototype.apply,
       _hasOwn = Object.prototype.hasOwnProperty;
 
-  var setCB = function(){};
+  var setCB = function(payload){};
       
   function Forwarder(target){
     this.target = target;
@@ -49,11 +49,11 @@ module.exports = function(){
       return Object.defineProperty(this.target, key, desc);
     },
     get: function get(receiver, key){
-      return this.target[key];
+      return this.target.data[key];
     },
     set: function set(receiver, key, value){
-      this.target[key] = value;
-      setCB();
+      this.target.data[key] = value;
+      setCB(JSON.stringify(this.target.data));
       return true;
     },
     has: function has(key){
@@ -76,12 +76,14 @@ module.exports = function(){
 
   function forward(target, set){
     var handler = new Forwarder(target);
+
     if (!!set) setCB = set;
+
     return typeof target === 'function'
       ? Proxy.createFunction(handler,
           function(){ return handler.apply(this, _slice.call(arguments)) },
           function(){ return handler.construct(_slice.call(arguments)) })
-      : Proxy.create(handler, Object.getPrototypeOf(Object(target)));
+      : new Proxy(Object.getPrototypeOf(Object(target)), handler);
   }
 
   return forward;

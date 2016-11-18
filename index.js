@@ -1,39 +1,57 @@
 var fs = require('fs');
 var http = require('http');
+var Redis = require('ioredis');
+var redis = new Redis();
 
 const DIRECTORY = './flydata/data.fdb';
 
 var flydb = {
-	start: startdb,
+	start: startredis,
+	//start: startfile,
 	_data: {}
 }
+flydb._data.name = 'FlyDB';
 
-flydb.data = require('./proxy')(flydb._data, function(){
-	_save();
+flydb.data = require('./proxy')(flydb._data, function(payload){
+	//_savetofile(payload);
+	_redisstore(payload);
 });
 
 
 if (typeof Proxy === 'undefined') {
-	_requestProxy();
+   _requestProxy();
 }
 
 var keywords = Object.keys(flydb);
 
 
 /*
- * Starts the db synchronously since boot performance is not important
+ * Starts reading the flat file synchronously since boot performance is not important
  */
-function startdb(){
-	try{
-		var data = fs.readFileSync(DIRECTORY).toString();
-	} catch (err) {
-		var data = {};
-		fs.mkdirSync('./flydata/');
-		fs.writeFileSync(DIRECTORY, "{}")
-	}
-	
-	flydb._data = _parseString(data);
-	return flydb.data;
+function startfile(){
+   try{
+      var data = fs.readFileSync(DIRECTORY).toString();
+   } catch (err) {
+      var data = {};
+      fs.mkdirSync('./flydata/');
+      fs.writeFileSync(DIRECTORY, "{}")
+   }
+
+   flydb._data.data = JSON.parse(data);
+   return flydb.data;
+}
+
+/*
+ * Getting stuff out of redis - return a promise
+ */
+function startredis(){
+   var p = new Promise(function (resolve, reject) {
+      redis.get('flydb', function(err, result) {
+         flydb._data.data = (result) ? JSON.parse(result) : {};
+         resolve(flydb.data);
+      });
+   });
+   return p;
 }
 
 /*
@@ -92,9 +110,17 @@ function _requestProxy(){
 /*
  * Saves data in db;
  */
-function _save(){
-	fs.writeFileSync(DIRECTORY, _stringify(flydb.data));
+function _savetofile(payload){
+	fs.writeFileSync(DIRECTORY, payload);
 }
+
+/*
+ * Stores data in redis
+ */
+function _redisstore(payload){
+        redis.set('flydb', payload);
+}
+
 
 module.exports = flydb.start();
 

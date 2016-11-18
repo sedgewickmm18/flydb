@@ -20,5 +20,8 @@
   "bugs": {
     "url": "https://github.com/yangli1990/flydb/issues"
   },
-  "homepage": "https://github.com/yangli1990/flydb"
+  "homepage": "https://github.com/yangli1990/flydb",
+  "dependencies": {
+    "ioredis": "^2.4.0"
+  }
 }
